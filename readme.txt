@@ -14,7 +14,7 @@ Regenerate thumbnails according to actual settings and identify/remove unused im
 
 == Description ==
 
-Fix Media Library fixes inconsistence between wp-content/uploads folder and
+Fix Media Library fixes inconsistency between wp-content/uploads folder and
 database.
 Fixes corrupted Media Library database records.
 
