@@ -9,14 +9,6 @@ Author URI: https://wowpress.host
 License: GPL2
 */
 
-//TODO show image sizes
-// allow to deregister
-// overwrite post_name for non-unique
-// https://wordpress.org/plugins/image-sizes/
-// https://wordpress.org/plugins/fix-my-posts/
-// check missing images
-// report about gif and convert to png
-
 if ( !defined( 'ABSPATH' ) ) {
 	die();
 }

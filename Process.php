@@ -81,21 +81,32 @@ class Process {
 
 	public function process_post( $post_id ) {
 		$this->last_processed_description = '';
-		// $post->post_name = '';
-		// wp_update_post( $post );
-		// check presense of _wp_attached_file
 
 		// don't process non-images
 		$post = get_post( $post_id );
 		if ( substr( $post->post_mime_type, 0, 6 ) != 'image/' ) {
 			$filename = get_attached_file( $post_id );
+			if ( !file_exists( $filename ) ) {
+				if ( $this->c_posts_delete_with_missing_images ) {
+					wp_delete_post( $post_id, true );
+					$this->errors_count++;
+					if ( $this->log->verbose ) {
+						$this->log->log( $post_id,
+							'Attachment deleted since file is missing: ' . $filename );
+					}
+				} else {
+					if ( $this->log->verbose ) {
+						$this->log->log( $post_id, 'File is missing for non-image attachment: ' . $filename );
+					}
+				}
+			} else {
+				$meta = wp_get_attachment_metadata( $post_id );
+				$this->unreferenced_files->mark_referenced_by_metadata(
+					$this->wp_upload_dir, $filename, $meta );
 
-			$meta = wp_get_attachment_metadata( $post_id );
-			$this->unreferenced_files->mark_referenced_by_metadata(
-				$this->wp_upload_dir, $filename, $meta );
-
-			if ( $this->log->verbose ) {
-				$this->log->log( $post_id, 'Not image attachment, skipping' );
+				if ( $this->log->verbose ) {
+					$this->log->log( $post_id, 'Not image attachment, skipping' );
+				}
 			}
 
 			$this->last_processed_description = 'non-image attachment ' . $post_id;
