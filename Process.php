@@ -89,6 +89,7 @@ class Process {
 		$post = get_post( $post_id );
 		if ( substr( $post->post_mime_type, 0, 6 ) != 'image/' ) {
 			$filename = get_attached_file( $post_id );
+
 			$meta = wp_get_attachment_metadata( $post_id );
 			$this->unreferenced_files->mark_referenced_by_metadata(
 				$this->wp_upload_dir, $filename, $meta );
@@ -140,8 +141,8 @@ class Process {
 	public function process_used_index_file() {
 		$v = $this->unreferenced_files->process_used_index_file( $this->log,
 			$this->wp_upload_dir );
-		$this->errors_count += $v->errors_count;
-		$v->errors_count = 0;
+		$this->errors_count += $this->unreferenced_files->errors_count;
+		$this->unreferenced_files->errors_count = 0;
 
 		return $v;
 	}
