@@ -50,7 +50,9 @@ class ProcessUnreferencedThumbnails {
 				$after_prefix = substr( $after_prefix, 0,
 					strlen( $after_prefix ) - strlen( $postfix ) );
 
-				if ( preg_match( '~^[0-9]+x[0-9]+$~', $after_prefix) ) {
+				// thumbnails file format is 100x500
+				// 100x500@2x for retina
+				if ( preg_match( '~^[0-9]+x[0-9]+(@2x)?$~', $after_prefix) ) {
 					$this->basenames[$basename] = '*';
 				}
 			}
