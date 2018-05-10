@@ -45,7 +45,9 @@ class AdminPage {
 		$process_processed = '0';
 		$process_errors = '0';
 
-		if ( isset( $status['status'] ) && $status['status'] == 'working' ) {
+		if ( isset( $status['status'] ) &&
+				( $status['status'] == 'working_posts' ||
+				$status['status'] == 'working_index_files' ) ) {
 			$messages =
 				'<div class="updated settings-error notice is-dismissible">' .
 				'<p><strong>Previous processing was not finished. Continue execution now or start new processing.</strong></p></div>';
