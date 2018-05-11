@@ -57,6 +57,8 @@ jQuery(function($) {
 				$('input[name="wow_mlf_config_guid"]:checked').val(),
 			'posts_delete_with_missing_images':
 				checkbox_value('#wow_mlf_config_posts_delete_with_missing_images'),
+			'posts_delete_duplicate_url':
+				$('input[name="wow_mlf_config_posts_delete_duplicate_url"]:checked').val(),
 			'files_thumbnails':
 				$('input[name="wow_mlf_config_files_thumbnails"]:checked').val(),
 			'files_unreferenced':

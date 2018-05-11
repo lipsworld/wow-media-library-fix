@@ -22,7 +22,8 @@ function wow_media_library_fix_spl_autoload( $class ) {
 	$class = rtrim( $class, '\\' );
 	if ( substr( $class, 0, 19 ) == 'WowMediaLibraryFix\\' ) {
 		$filename = __DIR__ . DIRECTORY_SEPARATOR .
-			substr( $class, 19 ) . '.php';
+			str_replace( '\\', DIRECTORY_SEPARATOR, substr( $class, 19 ) ) .
+			'.php';
 
 		if ( file_exists( $filename ) ) {
 			require $filename;

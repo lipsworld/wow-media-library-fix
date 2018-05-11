@@ -8,6 +8,7 @@ class Process {
 	// config
 	private $c_guid;
 	private $c_posts_delete_with_missing_images;
+	private $c_posts_delete_duplicate_url;
 	private $c_files_thumbnails;
 	private $c_regenerate_metadata;
 
@@ -21,6 +22,8 @@ class Process {
 		$this->c_guid = $status['guid'];
 		$this->c_posts_delete_with_missing_images =
 			$status['posts_delete_with_missing_images'];
+		$this->c_posts_delete_duplicate_url =
+			$status['posts_delete_duplicate_url'];
 		$this->c_files_thumbnails = $status['files_thumbnails'];
 		$this->c_regenerate_metadata = $status['regenerate_metadata'];
 		$this->wp_upload_dir = wp_upload_dir();
@@ -39,6 +42,11 @@ class Process {
 			$this->log->clear();
 			$this->unreferenced_files->clear();
 		}
+
+		// load plugins
+		add_action( 'wow_mlf_duplicate_post_migrate', array(
+			'WowMediaLibraryFix\Plugins\KeepThumbnailReference',
+			'wow_mlf_duplicate_post_migrate' ), 20, 3 );
 	}
 
 
@@ -86,20 +94,8 @@ class Process {
 		$post = get_post( $post_id );
 		if ( substr( $post->post_mime_type, 0, 6 ) != 'image/' ) {
 			$filename = get_attached_file( $post_id );
-			if ( !file_exists( $filename ) ) {
-				if ( $this->c_posts_delete_with_missing_images ) {
-					wp_delete_post( $post_id, true );
-					$this->errors_count++;
-					if ( $this->log->verbose ) {
-						$this->log->log( $post_id,
-							'Attachment deleted since file is missing: ' . $filename );
-					}
-				} else {
-					if ( $this->log->verbose ) {
-						$this->log->log( $post_id, 'File is missing for non-image attachment: ' . $filename );
-					}
-				}
-			} else {
+			$processed = $this->maybe_delete_post( $post, $filename );
+			if ( !$processed ) {
 				$meta = wp_get_attachment_metadata( $post_id );
 				$this->unreferenced_files->mark_referenced_by_metadata(
 					$this->wp_upload_dir, $filename, $meta );
@@ -115,32 +111,23 @@ class Process {
 
 
 		$filename = $this->get_attached_filename( $post );
-		if ( is_null( $filename ) ) {
-			if ( $this->c_posts_delete_with_missing_images ) {
-				wp_delete_post( $post_id, true );
-				$this->errors_count++;
-				if ( $this->log->verbose ) {
-					$this->log->log( $post_id,
-						'Attachment deleted since image is missing' );
-				}
-			}
+		$deleted = $this->maybe_delete_post( $post, $filename );
 
-			return;
+		if ( !$deleted ) {
+			$this->maybe_update_guid( $post, $filename );
+
+			$t = new ProcessUnreferencedThumbnails( $post_id, $this->log,
+				$this->c_files_thumbnails );
+			$t->find_thumbnails_of( $filename );
+
+			$meta = $this->maybe_regenerate_metadata( $post_id, $filename );
+
+			$t->match_with_metadata( $this->wp_upload_dir, $meta );
+			$this->errors_count += $t->errors_count;
+
+			$this->unreferenced_files->mark_referenced_by_metadata(
+				$this->wp_upload_dir, $filename, $meta );
 		}
-
-		$this->maybe_update_guid( $post, $filename );
-
-		$t = new ProcessUnreferencedThumbnails( $post_id, $this->log,
-			$this->c_files_thumbnails );
-		$t->find_thumbnails_of( $filename );
-
-		$meta = $this->maybe_regenerate_metadata( $post_id, $filename );
-
-		$t->match_with_metadata( $this->wp_upload_dir, $meta );
-		$this->errors_count += $t->errors_count;
-
-		$this->unreferenced_files->mark_referenced_by_metadata(
-			$this->wp_upload_dir, $filename, $meta );
 
 		$this->last_processed_description = str_replace(
 			ABSPATH, '', $filename );
@@ -215,6 +202,29 @@ class Process {
 		update_post_meta( $post->ID, '_wp_attached_file',
 			$guid_filename_postfix );
 		return $guid_filename;
+	}
+
+
+
+	private function maybe_delete_post( $post, $filename ) {
+		if ( is_null( $filename ) || !file_exists( $filename ) ) {
+			if ( $this->c_posts_delete_with_missing_images ) {
+				wp_delete_post( $post->ID, true );
+				$this->errors_count++;
+				$this->log->log( $post->ID,
+					"Attachment deleted because of missing image file '$filename'" );
+
+				return true;
+			}
+		}
+
+		if ( !empty( $this->c_posts_delete_duplicate_url ) ) {
+			$p = new ProcessPostDuplicateUrl( $post, $filename,
+				$this->log, $this->c_posts_delete_duplicate_url );
+			return $p->maybe_delete_post();
+		}
+
+		return false;
 	}
 
 

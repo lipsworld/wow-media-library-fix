@@ -94,7 +94,26 @@ namespace WowMediaLibraryFix;
 				'id' => 'wow_mlf_config_posts_delete_with_missing_images',
 				'name' => 'Delete attachments with missing image files',
 				'value' => false,
-				'description' => 'Delete attachments from media library is image file it references to is missing and plugin failed to find it from GUID. Otherwise just log entry created.'
+				'description' => 'Delete attachments from Media Library is image file it references to is missing and plugin failed to find it from GUID. Otherwise just log entry created.'
+			) );
+			AdminUi::tr_radiogroup( 'Duplicate Attachments', array(
+				'name' => 'wow_mlf_config_posts_delete_duplicate_url',
+				'value' => '',
+				'values' => array(
+					array(
+						'value' => '',
+						'name' => "Don't analyze"
+					),
+					array(
+						'value' => 'log',
+						'name' => 'Write a note to log if duplication found'
+					),
+					array(
+						'value' => 'delete',
+						'name' => 'Delete duplicate attachments'
+					)
+				),
+				'description' => 'Attachments pointing the same image file with the same post_parent are often caused by some malfunction during original image upload process.'
 			) );
 			AdminUi::tr_radiogroup( 'Logging to', array(
 				'name' => 'wow_mlf_config_log_to',

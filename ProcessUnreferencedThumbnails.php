@@ -28,7 +28,7 @@ class ProcessUnreferencedThumbnails {
 
 
 	public function find_thumbnails_of( $filename ) {
-		if ( empty( $this->c_files_thumbnails ) ) {
+		if ( empty( $this->c_files_thumbnails ) || empty( $filename ) ) {
 			return;
 		}
 
@@ -99,7 +99,9 @@ class ProcessUnreferencedThumbnails {
 			$filename_in_log = str_replace( ABSPATH, '',
 				$this->path . DIRECTORY_SEPARATOR . $filename );
 
-			if ( $this->c_files_thumbnails == 'log' ) {
+			if ( !file_exists( $this->path . DIRECTORY_SEPARATOR . $filename ) ) {
+				// file already removed by previous attachments processings
+			} elseif ( $this->c_files_thumbnails == 'log' ) {
 				$this->log->log( $this->post_id,
 					'Found unreferenced thumbnail ' . $filename_in_log );
 			} elseif ( $this->c_files_thumbnails == 'move' ) {

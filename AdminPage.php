@@ -88,6 +88,8 @@ class AdminPage {
 					'guid' => $_REQUEST['guid'],
 					'posts_delete_with_missing_images' =>
 						( $_REQUEST['posts_delete_with_missing_images'] == 'true' ),
+					'posts_delete_duplicate_url' =>
+						$_REQUEST['posts_delete_duplicate_url'],
 					'files_thumbnails' => $_REQUEST['files_thumbnails'],
 					'files_unreferenced' => $_REQUEST['files_unreferenced'],
 					'regenerate_metadata' =>
