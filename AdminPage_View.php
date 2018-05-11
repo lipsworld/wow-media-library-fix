@@ -14,7 +14,7 @@ namespace WowMediaLibraryFix;
 
 		<p>
 			Don't forget to make a full backup of your files and database
-			before trying
+			before trying.
 		</p>
 		<table class="form-table" id="wow_mlf_config" <?php echo $style_config ?>>
 			<?php
@@ -161,7 +161,7 @@ namespace WowMediaLibraryFix;
 			</button>
 		</div>
 		<div class="submit" id="wow_mlf_working_outer" style="display: none">
-			<div class="loader" style="float: left"></div>
+			<div class="wow_mlf_loader" style="float: left"></div>
 
 			<button class="button" id="wow_mlf_stop">Stop processing</button>
 		</div>
