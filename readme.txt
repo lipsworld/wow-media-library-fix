@@ -9,7 +9,7 @@ Stable tag: 1.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Fix Media Library inconsitence between database and wp-content/uploads folder contents.
+Fix Media Library inconsistency between database and wp-content/uploads folder contents.
 Fix missing attachments metadata (_wp_attachment_metadata).
 Regenerate thumbnails according to actual settings and identify/remove unused image files.
 
