@@ -1,4 +1,4 @@
-=== Plugin Name ===
+=== Fix Media Library ===
 Contributors: wowpress.host
 Donate link: https://wowpress.host/plugins/fix-media-library/
 Tags: media library, attachments, thumbnail, thumbnails, post thumbnail, post thumbnails, clean, images
@@ -26,6 +26,7 @@ Useful when:
 * There are Media Library entries present pointing to image files that don't exist anymore
 * Some entries in Media Library don't show images, while those are present (_wp_attachment_metadata meta field corrupted)
 * There are a lot of images in wp-content/uploads folder that are no longer used
+* There are duplicate attachments pointing to the same image file
 * You want to update attachments GUID fields containing old/staging urls
 
 At [WowPress.host](https://wowpress.host/) company we regularly migrate very old databases and clean it up to make sure website using it are running smoothly. Of course those have all different kinds of inconsistencies collected during years or even decades, and Media Library is the most common problematic piece of data here.
