@@ -1,13 +1,20 @@
 jQuery(function($) {
 	var notices_count = 0;
+	var ajax_timeout = null;
+
+
 
 	var checkbox_value = function(selector) {
 		return $(selector).is(':checked') ? 'true' : 'false';
 	};
 
+
+
 	var show_if = function(selector, show) {
 		$(selector).css('display', (show ? '' : 'none'));
 	};
+
+
 
 	var state_set = function(mode) {
 		if (mode)
@@ -27,6 +34,123 @@ jQuery(function($) {
 		show_if('#wow_mlf_done', mode == 'done');
 		show_if('#wow_mlf_failed', mode == 'failed');
 	}
+
+
+
+	var ajax_timeout_clear = function() {
+		if (ajax_timeout != null) {
+			clearTimeout(ajax_timeout);
+			ajax_timeout = null;
+		}
+	};
+
+
+
+	var step = function(extras) {
+		extras.action = 'wow_media_library_fix_process';
+		extras._wpnonce = wow_media_library_fix_nonce;
+
+		var react_to_result = true;
+		var react_to_failure = function() {
+			if (!react_to_result)
+				return;
+
+			react_to_result = false;
+
+			if (!extras.failed_attempt)
+				extras.failed_attempt = 0;
+
+			extras.failed_attempt++;
+
+			if (extras.failed_attempt > 5)
+				step_failed('Repeating timeouts during server request');
+			else
+				step({failed_attempt: extras.failed_attempt});
+		};
+
+
+		ajax_timeout_clear();
+		ajax_timeout = setTimeout(react_to_failure, 15000);
+
+		jQuery.post({
+			url: ajaxurl,
+			data: extras,
+			dataType: 'json',
+			error: react_to_failure,
+			success: function(data) {
+				if (!react_to_result)
+					return;
+
+				ajax_timeout_clear();
+
+				$('#wow_mlf_total').html(data.posts_all);
+				$('#wow_mlf_processed').html(data.posts_processed);
+				$('#wow_mlf_errors').html(data.errors_count);
+				$('#wow_mlf_now').html(data.last_processed_description);
+
+				notices_add(data.new_notices);
+
+				if (data.status == 'working_posts' ||
+					data.status == 'working_index_files') {
+					if (wow_mlf_state == 'working') {
+						step({});
+					}
+				} else if (data.status == 'done') {
+					step_done();
+				} else {
+					step_failed(error);
+				}
+			}
+		});
+	};
+
+
+
+	var notices_add = function(notices) {
+		if (!notices || !notices.length)
+			return;
+		if (notices_count > 10000)
+			return;
+
+		for (var n = 0; n < notices.length; n++) {
+			var i = notices[n];
+			notices_count++;
+			var notice = $('<div>');
+			if (i.post_id) {
+				notice.append($('<a>')
+					.prop('href', 'upload.php?item=' + Number(i.post_id))
+					.text(i.post_id));
+				notice.append($('<span>').text(': '));
+			}
+			notice.append($('<span>').text(i.message));
+
+			$('#wow_mlf_notices').prepend(notice);
+		}
+		if (notices_count > 10000) {
+			$('#wow_mlf_notices').prepend(
+				$( '<div>Too many log entries. ' +
+					'Stop logging to avoid browser crash. ' +
+					'Consider log to file instead.</div>' ));
+		}
+	};
+
+
+
+	var step_done = function() {
+		state_set('done');
+	};
+
+
+
+	var step_failed = function(error) {
+		$('#wow_mlf_notices').prepend(
+			$('<div>').text('Request failed: ' +
+				(error.statusText ? error.statusText : '') +
+				' ' +
+				(error.responseText ? error.responseText.substr(0, 500) : '' )));
+
+		state_set('failed');
+	};
 
 
 
@@ -81,92 +205,4 @@ jQuery(function($) {
 		e.preventDefault();
 		state_set('paused');
 	});
-
-
-
-	var step = function(extras) {
-		extras.action = 'wow_media_library_fix_process';
-		extras._wpnonce = wow_media_library_fix_nonce;
-
-		jQuery.post({
-			url: ajaxurl,
-			data: extras,
-			dataType: 'json',
-			success: function(data) {
-				$('#wow_mlf_total').html(data.posts_all);
-				$('#wow_mlf_processed').html(data.posts_processed);
-				$('#wow_mlf_errors').html(data.errors_count);
-				$('#wow_mlf_now').html(data.last_processed_description);
-
-				notices_add(data.new_notices);
-
-				if (data.status == 'working_posts' ||
-					data.status == 'working_index_files') {
-					if (wow_mlf_state == 'working') {
-						step({});
-					}
-				} else if (data.status == 'done') {
-					step_done();
-				}
-			},
-			error: function(error) {
-				if (!extras.failed_attempt)
-					extras.failed_attempt = 0;
-				extras.failed_attempt++;
-
-				if (extras.failed_attempt > 5)
-					step_failed(error);
-				else
-					step(extras);
-			}
-		});
-
-
-
-		var notices_add = function(notices) {
-			if (!notices || !notices.length)
-				return;
-			if (notices_count > 10000)
-				return;
-
-			for (var n = 0; n < notices.length; n++) {
-				var i = notices[n];
-				notices_count++;
-				var notice = $('<div>');
-				if (i.post_id) {
-					notice.append($('<a>')
-						.prop('href', 'upload.php?item=' + Number(i.post_id))
-						.text(i.post_id));
-					notice.append($('<span>').text(': '));
-				}
-				notice.append($('<span>').text(i.message));
-
-				$('#wow_mlf_notices').prepend(notice);
-			}
-			if (notices_count > 10000) {
-				$('#wow_mlf_notices').prepend(
-					$( '<div>Too many log entries. ' +
-						'Stop logging to avoid browser crash. ' +
-						'Consider log to file instead.</div>' ));
-			}
-		};
-
-
-
-		var step_done = function() {
-			state_set('done');
-		}
-
-
-
-		var step_failed = function(error) {
-			$('#wow_mlf_notices').prepend(
-				$('<div>').text('Request failed: ' +
-					(error.statusText ? error.statusText : '') +
-					' ' +
-					(error.responseText ? error.responseText.substr(0, 500) : '' )));
-
-			state_set('failed');
-		}
-	};
 });
