@@ -233,18 +233,51 @@ class Process {
 		if ( $this->c_guid == 'log' ) {
 			$this->log->log( $post->ID,
 				"Post GUID mismatch: Actual value '{$post->guid}', but normalized is '$required_guid'" );
-		} elseif ( $this->c_guid == 'fix' ) {
-			// wp_update_post won't change guid (and thats correct)
-			global $wpdb;
-			$wpdb->update( $wpdb->posts,
-				array( 'guid' => $required_guid ),
-				array( 'id' => $post->ID ) );
+			return;
+		}
 
-			if ( $this->log->verbose ) {
-				$old_guid = $post->guid;
-				$this->log->log( $post->ID,
-					"Post GUID changed from '$old_guid' to '$required_guid'" );
+		if ( $this->c_guid != 'fix' ) {
+			return;
+		}
+
+
+		// find unique guid
+		global $wpdb;
+
+
+		$new_guid = '';
+		for ( $n = 0; $n < 100; $n++ ) {
+			$new_guid = $required_guid . ( $n <= 0 ? '' : '-' . $n );
+
+			$sql = $wpdb->prepare( "SELECT ID
+				FROM {$wpdb->posts}
+				WHERE guid = %s AND ID != %d
+				LIMIT 1", $new_guid, $post->ID );
+
+			$present = $wpdb->get_var( $sql );
+			if ( is_null( $present ) ) {
+				break;
 			}
+
+			$required_guid_postfix++;
+		}
+
+		if ( $n >= 100 ) {
+			$this->log->log( $post->ID,
+				"Tried to update post GUID but failed to generate unique value based on '$required_guid' string" );
+			return;
+		}
+
+		// wp_update_post won't change guid (and thats correct)
+		global $wpdb;
+		$wpdb->update( $wpdb->posts,
+			array( 'guid' => $new_guid ),
+			array( 'id' => $post->ID ) );
+
+		if ( $this->log->verbose ) {
+			$old_guid = $post->guid;
+			$this->log->log( $post->ID,
+				"Post GUID changed from '$old_guid' to '$new_guid'" );
 		}
 	}
 
