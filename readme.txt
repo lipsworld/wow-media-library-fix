@@ -1,7 +1,8 @@
 === Fix Media Library ===
-Contributors: wowpress.host
+Contributors: wowpresshost
 Donate link: https://wowpress.host/plugins/fix-media-library/
 Tags: media library, attachments, thumbnail, thumbnails, post thumbnail, post thumbnails, clean, images
+Requires PHP: 5.3
 Requires at least: 4.6
 Tested up to: 4.9.5
 Stable tag: 1.0
@@ -40,6 +41,8 @@ Support for this plugin is provided via the [WordPress.org forums](https://wordp
 
 The source code for this plugin is available on [GitHub](https://github.com/wowpress-host/wow-media-library-fix).
 
+Paid support at [WowPress.host](https://wowpress.host/professional-services/).
+
 == Installation ==
 
 1. Go to your admin area and select Plugins → Add New from the menu.
@@ -52,6 +55,10 @@ The source code for this plugin is available on [GitHub](https://github.com/wowp
 
 1. Configuration page
 2. Progress running
+
+== Upgrade Notice ==
+
+Nothing to care about
 
 == ChangeLog ==
 
