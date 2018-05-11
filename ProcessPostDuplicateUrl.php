@@ -47,6 +47,15 @@ class ProcessPostDuplicateUrl {
 
 		// longer query to make sure its dup
 		// take latest dup since freshier posts are usually most valid
+		$fields_extra = ', post_parent';
+		$post_parent_check = $wpdb->prepare( "p.post_parent = %d AND",
+			$this->post->post_parent );
+
+		if ( $this->c_posts_delete_duplicate_url == 'delete_ignore_parent' ) {
+			$post_parent_check = '';
+			$fields_extra = '';
+		}
+
 		$sql = $wpdb->prepare( "SELECT post_id
 			FROM {$wpdb->postmeta} AS pm
 				INNER JOIN {$wpdb->posts} AS p
@@ -68,7 +77,7 @@ class ProcessPostDuplicateUrl {
 		if ( is_null( $present ) ) {
 			if ( $this->log->verbose ) {
 				$this->log->log( $this->post->ID,
-					"Post with duplicate '_wp_attached_file' present, but those posts don't have equal post_type, post_parent, post_status fields. Skipped." );
+					"Post with duplicate '_wp_attached_file' = '$my_file' present, but those posts don't have equal post_type$fields_extra, post_status fields. Skipped." );
 			}
 
 			return false;
@@ -77,9 +86,10 @@ class ProcessPostDuplicateUrl {
 		if ( $this->c_posts_delete_duplicate_url == 'log' ) {
 			$this->log->log( $this->post->ID,
 				"Duplicate post '$present' found poiting the same file '$my_file'" );
-		} elseif ( $this->c_posts_delete_duplicate_url == 'delete' ) {
+		} elseif ( $this->c_posts_delete_duplicate_url == 'delete' ||
+				$this->c_posts_delete_duplicate_url == 'delete_ignore_parent' ) {
 			// simple call to wp_delete_post will delete images too
-			$this->post_duplicate_delete( $present );
+			$this->post_duplicate_delete( $present, $my_file );
 			return true;
 		}
 
@@ -88,7 +98,7 @@ class ProcessPostDuplicateUrl {
 
 
 
-	private function post_duplicate_delete( $new_post_id ) {
+	private function post_duplicate_delete( $new_post_id, $my_file ) {
 		// change references
 		do_action( 'wow_mlf_duplicate_post_migrate', $this->post->ID,
 			$new_post_id, $this->log );
@@ -105,6 +115,6 @@ class ProcessPostDuplicateUrl {
 		wp_delete_post( $this->post->ID, true );
 
 		$this->log->log( $this->post->ID,
-			"Attachment deleted because duplicate post '$new_post_id' found" );
+			"Attachment deleted because duplicate post '$new_post_id' found pointing '$my_file'" );
 	}
 }

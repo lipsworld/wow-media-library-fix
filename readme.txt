@@ -18,6 +18,7 @@ Regenerate thumbnails according to actual settings and identify/remove unused im
 Fix Media Library fixes inconsistency between wp-content/uploads folder and
 database.
 Fixes corrupted Media Library database records.
+Designed to run smoothly against huge Media Libraries containing hundreds of thousands of images.
 
 Useful when:
 

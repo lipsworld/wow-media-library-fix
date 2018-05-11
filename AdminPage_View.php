@@ -111,9 +111,13 @@ namespace WowMediaLibraryFix;
 					array(
 						'value' => 'delete',
 						'name' => 'Delete duplicate attachments'
+					),
+					array(
+						'value' => 'delete_ignore_parent',
+						'name' => 'Delete duplicate attachments even if attached to different parent posts.'
 					)
 				),
-				'description' => 'Attachments pointing the same image file with the same post_parent are often caused by some malfunction during original image upload process.'
+				'description' => 'Attachments pointing the same image file with the same post_parent are often caused by some malfunction during original image upload process. Also you may leave only one attachment (with empty parent_post) if there are duplicates present with different parent_posts.'
 			) );
 			AdminUi::tr_radiogroup( 'Logging to', array(
 				'name' => 'wow_mlf_config_log_to',
