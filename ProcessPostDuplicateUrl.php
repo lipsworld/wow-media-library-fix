@@ -64,11 +64,10 @@ class ProcessPostDuplicateUrl {
 				pm.meta_value = %s AND
 				pm.post_id > %d AND
 				p.post_type = 'attachment' AND
-				p.post_parent = %d AND
+				$post_parent_check
 				p.post_status = %s
 			ORDER BY post_id DESC
-			LIMIT 1", $my_file, $this->post->ID, $this->post->post_parent,
-			$this->post->post_status );
+			LIMIT 1", $my_file, $this->post->ID, $this->post->post_status );
 		$present = $wpdb->get_var( $sql );
 
 		$present = apply_filters( 'wow_mlf_duplicate_post',
@@ -77,7 +76,7 @@ class ProcessPostDuplicateUrl {
 		if ( is_null( $present ) ) {
 			if ( $this->log->verbose ) {
 				$this->log->log( $this->post->ID,
-					"Post with duplicate '_wp_attached_file' = '$my_file' present, but those posts don't have equal post_type$fields_extra, post_status fields. Skipped." );
+					"Post with duplicate '_wp_attached_file' = '$my_file' present, but those posts don't have equal post_type$fields_extra, post_status fields. Skipped. " . $sql );
 			}
 
 			return false;
