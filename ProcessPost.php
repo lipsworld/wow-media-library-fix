@@ -2,7 +2,7 @@
 
 namespace WowMediaLibraryFix;
 
-class Process {
+class ProcessPost {
 	public $last_processed_description = '';
 
 	// config
@@ -33,9 +33,7 @@ class Process {
 			$this->wp_upload_dir
 		);
 
-		$this->unreferenced_files = new ProcessUnreferencedFiles(
-			$status['files_unreferenced'],
-			$status['used_index_files'] );
+		$this->unreferenced_files = new ProcessUnreferencedFiles( $status );
 
 		if ( $status['posts_processed'] == 0 ) {
 			// on start
@@ -116,7 +114,7 @@ class Process {
 		if ( !$deleted ) {
 			$this->maybe_update_guid( $post, $filename );
 
-			$t = new ProcessUnreferencedThumbnails( $post_id, $this->log,
+			$t = new ProcessPostUnreferencedThumbnails( $post_id, $this->log,
 				$this->c_files_thumbnails );
 			$t->find_thumbnails_of( $filename );
 
@@ -157,9 +155,8 @@ class Process {
 		// if not present - try to find by guid
 		if ( empty( $post->guid ) ) {
 			$this->errors_count++;
-			if ( $this->log->verbose ) {
-				$this->log->log( $post->ID, 'Attachment has empty GUID' );
-			}
+			$this->log->log( $post->ID, 'Attachment has empty GUID' );
+
 			return null;
 		}
 		$baseurl = $this->wp_upload_dir['baseurl'];
@@ -173,9 +170,7 @@ class Process {
 
 			if ( $pos === FALSE ) {
 				$this->errors_count++;
-				if ( $this->log->verbose ) {
-					$this->log->log( $post->ID, "Attachment GUID doesnt allow to restore filename " . $post->guid );
-				}
+				$this->log->log( $post->ID, "Attachment GUID doesnt allow to restore filename " . $post->guid );
 				return null;
 			}
 
@@ -221,7 +216,10 @@ class Process {
 		if ( !empty( $this->c_posts_delete_duplicate_url ) ) {
 			$p = new ProcessPostDuplicateUrl( $post, $filename,
 				$this->log, $this->c_posts_delete_duplicate_url );
-			return $p->maybe_delete_post();
+			if ( $p->maybe_delete_post() ) {
+				$this->errors_count++;
+				return true;
+			}
 		}
 
 		return false;
@@ -239,8 +237,8 @@ class Process {
 			return;
 		}
 
-		$this->errors_count++;
 		if ( $this->c_guid == 'log' ) {
+			$this->errors_count++;
 			$this->log->log( $post->ID,
 				"Post GUID mismatch: Actual value '{$post->guid}', but normalized is '$required_guid'" );
 			return;
@@ -278,17 +276,20 @@ class Process {
 			return;
 		}
 
+		$old_guid = $post->guid;
+		if ( $old_guid == $new_guid ) {
+			return;
+		}
+
 		// wp_update_post won't change guid (and thats correct)
 		global $wpdb;
 		$wpdb->update( $wpdb->posts,
 			array( 'guid' => $new_guid ),
 			array( 'id' => $post->ID ) );
 
-		if ( $this->log->verbose ) {
-			$old_guid = $post->guid;
-			$this->log->log( $post->ID,
-				"Post GUID changed from '$old_guid' to '$new_guid'" );
-		}
+		$this->errors_count++;
+		$this->log->log( $post->ID,
+			"Post GUID changed from '$old_guid' to '$new_guid'" );
 	}
 
 

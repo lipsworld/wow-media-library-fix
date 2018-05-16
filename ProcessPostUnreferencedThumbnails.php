@@ -2,7 +2,7 @@
 
 namespace WowMediaLibraryFix;
 
-class ProcessUnreferencedThumbnails {
+class ProcessPostUnreferencedThumbnails {
 	public $errors_count = 0;
 
 	private $post_id;
