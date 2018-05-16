@@ -175,7 +175,8 @@ class ProcessPost {
 				wp_delete_post( $post->ID, true );
 				$this->errors_count++;
 				$this->log->log( $post->ID,
-					"Attachment deleted because of missing image file '$filename'" );
+					'Attachment deleted because of missing image file.' .
+					( is_null( $filename ) ? '' : "'$filename'" ) );
 
 				return true;
 			}
