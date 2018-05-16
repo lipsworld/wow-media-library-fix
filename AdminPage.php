@@ -92,6 +92,8 @@ class AdminPage {
 						$_REQUEST['posts_delete_duplicate_url'],
 					'files_thumbnails' => $_REQUEST['files_thumbnails'],
 					'files_unreferenced' => $_REQUEST['files_unreferenced'],
+					'files_weak_references' =>
+						$_REQUEST['files_weak_references'],
 					'regenerate_metadata' =>
 						( $_REQUEST['regenerate_metadata'] == 'true' ),
 					'log_to' => $_REQUEST['log_to'],
@@ -99,6 +101,7 @@ class AdminPage {
 						( $_REQUEST['log_verbose'] == 'true' ),
 					'posts_all' => Process::posts_count(),
 					'posts_processed' => 0,
+					'unreferenced_files_processed' => 0,
 					'errors_count' => 0,
 					'last_processed_id' => 0,
 					'last_processed_description' => '',
@@ -108,23 +111,47 @@ class AdminPage {
 			}
 		}
 
-		$process = new Process( $status );
+
+		//
+		// init processors
+		//
+		$wp_upload_dir = wp_upload_dir();
+		$log = new ProcessLogger(
+			( $status['log_to'] == 'file' ),
+			$status['log_verbose'],
+			$wp_upload_dir
+		);
+
+		$process_unreferenced_files = new ProcessUnreferencedFiles( $status,
+			$wp_upload_dir, $log );
+		$process_post = new ProcessPost( $status, $wp_upload_dir, $log,
+			$process_unreferenced_files );
+
+		// on start
+		if ( $status['posts_processed'] == 0 ) {
+			$log->clear();
+			$process_unreferenced_files->clear();
+		}
+
+
+
+		//
+		// run processors
+		//
 		$last_processed_description = '';
 
 		try {
 			if ( $status['status'] == 'working_posts' ) {
 				for (;;) {
-					$post_id = $process->get_post_after( $status['last_processed_id'] );
+					$post_id = $process_post->get_post_after( $status['last_processed_id'] );
 					$status['posts_processed']++;
 					if ( is_null( $post_id ) ) {
 						$status['status'] = 'working_index_files';
 						$status['posts_processed'] = $status['posts_all'];
-						$status['posts_all'] += count(
-							array_keys( $process->used_index_files() ) );
 						break;
 					}
 
-					$process->process_post( $post_id );
+					$process_post->process_post( $post_id );
 					$status['last_processed_id'] = $post_id;
 
 					if ( time() >= $time_end ) {
@@ -132,16 +159,15 @@ class AdminPage {
 					}
 				}
 
-				$last_processed_description = $process->last_processed_description;
+				$last_processed_description = $process_post->last_processed_description;
 			}
 			if ( $status['status'] == 'working_index_files' ) {
 				for (;;) {
-					$index_file = $process->process_used_index_file();
-					$last_processed_description = $index_file;
-					$status['posts_processed']++;
+					$filename = $process_unreferenced_files->process_next_file();
+					$last_processed_description = $filename;
+					$status['unreferenced_files_processed']++;
 					if ( is_null( $index_file ) ) {
 						$status['status'] = 'done';
-						$status['posts_processed'] = $status['posts_all'];
 						break;
 					}
 
@@ -151,8 +177,9 @@ class AdminPage {
 				}
 			}
 
-			$status['errors_count'] += $process->errors_count;
-			$status['used_index_files'] = $process->used_index_files();
+			$status['errors_count'] += $process_post->errors_count;
+			$status['errors_count'] += $process_unreferenced_files->errors_count;
+			$status['used_index_files'] = $process_unreferenced_files->used_index_files;
 			Util::status_set($status);
 		} catch ( \Exception $e ) {
 			die( $e->getMessage() );
@@ -164,7 +191,7 @@ class AdminPage {
 			'errors_count' => $status['errors_count'],
 			'last_processed_description' => $last_processed_description,
 			'status' => $status['status'],
-			'new_notices' => $process->notices()
+			'new_notices' => $log->notices
 		));
 		exit;
 	}

@@ -24,29 +24,6 @@ namespace WowMediaLibraryFix;
 				'value' => true,
 				'description' => 'Rebuilds _wp_attachment_metadata meta field based on actual image size and regenerate all thumbnails'
 			) );
-			AdminUi::tr_radiogroup( 'Unreferenced Images', array(
-				'name' => 'wow_mlf_config_files_unreferenced',
-				'value' => '',
-				'values' => array(
-					array(
-						'value' => '',
-						'name' => "Don't analyze"
-					),
-					array(
-						'value' => 'log',
-						'name' => 'Write a note to log'
-					),
-					array(
-						'value' => 'move',
-						'name' => 'Move to wp-content/uploads/unreferenced folder'
-					),
-					array(
-						'value' => 'delete',
-						'name' => 'Delete'
-					)
-				),
-				'description' => 'Finds out all unreferenced images in your wp-content/uploads/&lt;year&gt; folders and acts appropriately. Search is made against references in Media Library only.'
-			) );
 			AdminUi::tr_radiogroup( 'Unreferenced Thumbnails', array(
 				'name' => 'wow_mlf_config_files_thumbnails',
 				'value' => 'move',
@@ -68,33 +45,13 @@ namespace WowMediaLibraryFix;
 						'name' => 'Delete'
 					)
 				),
-				'description' => 'Finds all image files identified as thumbnails belonging to the attachment before thumbnails regeneration, even if there is no reference to them in the database. Helpful if there are many unknown old thumbnails exists of already unregistered sizes.'
+				'description' => 'Finds all image files identified as thumbnails belonging to the attachment but not used by WordPress. Helpful if there are many unknown old thumbnails exists of already unregistered sizes.'
 			) );
-			AdminUi::tr_radiogroup( 'Post GUID', array(
-				'name' => 'wow_mlf_config_guid',
-				'value' => '',
-				'values' => array(
-					array(
-						'value' => '',
-						'name' => "Don't analyze"
-					),
-					array(
-						'value' => 'log',
-						'name' => 'Write a note to log if there is a mismatch'
-					),
-					array(
-						'value' => 'fix',
-						'name' => 'Update if there is a mismatch'
-					)
-				),
-				'description' => "It's not suggested to change post's GUID field since it's supposed to be a constant since creation. But normally those is built based on image URL for attachments, and it may be helpful to normalize it sometimes."
-			) );
-
 			AdminUi::tr_checkbox( 'Broken Attachments', array(
 				'id' => 'wow_mlf_config_posts_delete_with_missing_images',
-				'name' => 'Delete attachments with missing image files',
+				'name' => 'Delete attachments pointing to missing image file',
 				'value' => false,
-				'description' => 'Delete attachments from Media Library is image file it references to is missing and plugin failed to find it from GUID. Otherwise just log entry created.'
+				'description' => 'Delete attachments from Media Library is image file it references to is missing and plugin failed to find it from post GUID values. Otherwise just log entry created.'
 			) );
 			AdminUi::tr_radiogroup( 'Duplicate Attachments', array(
 				'name' => 'wow_mlf_config_posts_delete_duplicate_url',
@@ -117,7 +74,68 @@ namespace WowMediaLibraryFix;
 						'name' => 'Delete duplicate attachments even if attached to different parent posts.'
 					)
 				),
-				'description' => 'Attachments pointing the same image file with the same post_parent are often caused by some malfunction during original image upload process. Also you may leave only one attachment (with empty parent_post) if there are duplicates present with different parent_posts.'
+				'description' => 'Attachments pointing the same image file with the same post_parent are often caused by some malfunction during original image upload process. Normally that never happens. post_parent field is used by application logic sometimes (rarely), so there is an option to leave duplicates with different post_parent field.'
+			) );
+			AdminUi::tr_radiogroup( 'Post GUID', array(
+				'name' => 'wow_mlf_config_guid',
+				'value' => '',
+				'values' => array(
+					array(
+						'value' => '',
+						'name' => "Don't analyze"
+					),
+					array(
+						'value' => 'log',
+						'name' => 'Write a note to log if there is a mismatch'
+					),
+					array(
+						'value' => 'fix',
+						'name' => 'Update if there is a mismatch'
+					)
+				),
+				'description' => "It's not suggested to change post's GUID field since it's supposed to be a constant since creation. But normally those is built based on image URL for attachments, and it may be helpful to normalize it sometimes."
+			) );
+			AdminUi::tr_radiogroup( 'Images with weak references', array(
+				'name' => 'wow_mlf_config_files_weak_references',
+				'value' => '',
+				'values' => array(
+					array(
+						'value' => '',
+						'name' => "Don't analyze"
+					),
+					array(
+						'value' => 'log',
+						'name' => 'Write a note to log'
+					),
+					array(
+						'value' => 'add',
+						'name' => 'Add to Media Library'
+					)
+				),
+				'description' => 'Finds out all images in your wp-content/uploads/&lt;year&gt; folders that are not in Media Library, but practically used. That operation is very database time expensive.'
+			) );
+			AdminUi::tr_radiogroup( 'Unreferenced Images', array(
+				'name' => 'wow_mlf_config_files_unreferenced',
+				'value' => '',
+				'values' => array(
+					array(
+						'value' => '',
+						'name' => "Don't analyze"
+					),
+					array(
+						'value' => 'log',
+						'name' => 'Write a note to log'
+					),
+					array(
+						'value' => 'move',
+						'name' => 'Move to wp-content/uploads/unreferenced folder'
+					),
+					array(
+						'value' => 'delete',
+						'name' => 'Delete'
+					)
+				),
+				'description' => 'Finds out all unreferenced images in your wp-content/uploads/&lt;year&gt; folders and acts appropriately. Search is made against references in Media Library only.'
 			) );
 			AdminUi::tr_radiogroup( 'Logging to', array(
 				'name' => 'wow_mlf_config_log_to',

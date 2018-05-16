@@ -18,7 +18,8 @@ class ProcessPost {
 
 
 
-	public function __construct( $status ) {
+	public function __construct( $status, $wp_upload_dir, $log,
+			$unreferenced_files ) {
 		$this->c_guid = $status['guid'];
 		$this->c_posts_delete_with_missing_images =
 			$status['posts_delete_with_missing_images'];
@@ -26,20 +27,10 @@ class ProcessPost {
 			$status['posts_delete_duplicate_url'];
 		$this->c_files_thumbnails = $status['files_thumbnails'];
 		$this->c_regenerate_metadata = $status['regenerate_metadata'];
-		$this->wp_upload_dir = wp_upload_dir();
-		$this->log = new ProcessLogger(
-			( $status['log_to'] == 'file' ),
-			$status['log_verbose'],
-			$this->wp_upload_dir
-		);
+		$this->wp_upload_dir = $wp_upload_dir;
+		$this->log = $log;
+		$this->unreferenced_files = $unreferenced_files;
 
-		$this->unreferenced_files = new ProcessUnreferencedFiles( $status );
-
-		if ( $status['posts_processed'] == 0 ) {
-			// on start
-			$this->log->clear();
-			$this->unreferenced_files->clear();
-		}
 
 		// load plugins
 		add_action( 'wow_mlf_duplicate_post_migrate', array(
@@ -73,18 +64,6 @@ class ProcessPost {
 
 
 
-	public function notices() {
-		return $this->log->notices;
-	}
-
-
-
-	public function used_index_files() {
-		return $this->unreferenced_files->used_index_files;
-	}
-
-
-
 	public function process_post( $post_id ) {
 		$this->last_processed_description = '';
 
@@ -96,7 +75,7 @@ class ProcessPost {
 			if ( !$processed ) {
 				$meta = wp_get_attachment_metadata( $post_id );
 				$this->unreferenced_files->mark_referenced_by_metadata(
-					$this->wp_upload_dir, $filename, $meta );
+					$filename, $meta );
 
 				if ( $this->log->verbose ) {
 					$this->log->log( $post_id, 'Not image attachment, skipping' );
@@ -124,23 +103,12 @@ class ProcessPost {
 			$this->errors_count += $t->errors_count;
 
 			$this->unreferenced_files->mark_referenced_by_metadata(
-				$this->wp_upload_dir, $filename, $meta );
+				$filename, $meta );
 		}
 
 		$this->last_processed_description = str_replace(
 			ABSPATH, '', $filename );
 		return;
-	}
-
-
-
-	public function process_used_index_file() {
-		$v = $this->unreferenced_files->process_used_index_file( $this->log,
-			$this->wp_upload_dir );
-		$this->errors_count += $this->unreferenced_files->errors_count;
-		$this->unreferenced_files->errors_count = 0;
-
-		return $v;
 	}
 
 

@@ -23,8 +23,8 @@ jQuery(function($) {
 		var mode = wow_mlf_state;
 
 		show_if('#wow_mlf_start_outer',	mode == 'start');
-		show_if('#wow_mlf_restart_outer', mode == 'done' || mode == 'failed');
-		show_if('#wow_mlf_continue_outer', mode == 'paused');
+		show_if('#wow_mlf_restart_outer', mode == 'done');
+		show_if('#wow_mlf_continue_outer', mode == 'paused' || mode == 'failed');
 		show_if('#wow_mlf_config', mode == 'start');
 		show_if('#wow_mlf_process',
 			mode == 'working' || mode == 'paused' || mode == 'done' ||
@@ -80,6 +80,8 @@ jQuery(function($) {
 			success: function(data) {
 				if (!react_to_result)
 					return;
+				if (!data || !data.status)
+					return react_to_failure();
 
 				ajax_timeout_clear();
 
@@ -98,7 +100,7 @@ jQuery(function($) {
 				} else if (data.status == 'done') {
 					step_done();
 				} else {
-					step_failed(error);
+					step_failed({responseText: 'unknown status ' . data.status});
 				}
 			}
 		});
@@ -167,6 +169,7 @@ jQuery(function($) {
 		$('html, body').animate({ scrollTop: 0 }, "slow");
 		$('#wow_mlf_total').html('starting...');
 		$('#wow_mlf_processed').html('0');
+		$('#wow_mlf_errors').html('0');
 		$('#wow_mlf_now').html('');
 		$('#wow_mlf_notices').html('');
 		notices_count = 0;
@@ -185,6 +188,8 @@ jQuery(function($) {
 				$('input[name="wow_mlf_config_posts_delete_duplicate_url"]:checked').val(),
 			'files_thumbnails':
 				$('input[name="wow_mlf_config_files_thumbnails"]:checked').val(),
+			'files_weak_references':
+				$('input[name="wow_mlf_config_files_weak_references"]:checked').val(),
 			'files_unreferenced':
 				$('input[name="wow_mlf_config_files_unreferenced"]:checked').val(),
 			'regenerate_metadata':
