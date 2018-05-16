@@ -3,49 +3,56 @@
 namespace WowMediaLibraryFix;
 
 class ProcessUnreferencedFiles {
+	private $c_files_weak_references;
 	private $c_files_unreferenced;
-	public $used_index_files;
+
+	private $unreferenced_basenames;
+
+	public $status_unreferenced_files;
+	public $index_files;
 	public $errors_count = 0;
 
 
-	public function __construct( $c_files_unreferenced, $used_index_files ) {
-		$this->c_files_unreferenced = $c_files_unreferenced;
 
-		if ( is_array( $used_index_files ) ) {
-			$this->used_index_files = $used_index_files;
-		} else {
-			$this->used_index_files = array();
-		}
+	public function __construct( $status, $wp_upload_dir, $log ) {
+		$this->c_files_weak_references = $status['files_weak_references'];
+		$this->c_files_unreferenced = $status['files_unreferenced'];
+		$this->wp_upload_dir = $wp_upload_dir;
+		$this->log = $log;
+
+		$this->status_unreferenced_files = $status['unreferenced_files'];
 	}
 
 
 
 	public function clear() {
-		foreach ( $this->used_index_files as $filename => $value ) {
+		$index_files = $this->status_unreferenced_files['index_files'];
+
+		foreach ( $index_files as $filename => $value ) {
 			if ( file_exists( $filename ) ) {
 				unlink( $filename );
 			}
 		}
 
-		$used_index_files = array();
+		$this->status_unreferenced_files['index_files'] = array();
 	}
 
 
 
-	public function mark_referenced_by_metadata( $wp_upload_dir, $filename,
-		$meta ) {
-		if ( empty( $this->c_files_unreferenced ) ) {
+	public function mark_referenced_by_metadata( $filename, $meta ) {
+		if ( empty( $this->c_files_weak_references ) &&
+				empty( $this->c_files_unreferenced ) ) {
 			return;
 		}
 
 		$primary_filename = null;
 		if ( isset( $meta['file'] ) ) {
-			$primary_filename = $wp_upload_dir['basedir'] . DIRECTORY_SEPARATOR .
+			$primary_filename = $this->wp_upload_dir['basedir'] . DIRECTORY_SEPARATOR .
 				$meta['file'];
 			$path = dirname( $primary_filename );
 
 			$index_filename = $path . DIRECTORY_SEPARATOR . '.media-library-fix';
-			$this->used_index_files[$index_filename] = '*';
+			$this->status_unreferenced_files['index_files'][$index_filename] = '*';
 
 			$content = array( basename( $primary_filename ) );
 
@@ -67,7 +74,7 @@ class ProcessUnreferencedFiles {
 			$path = dirname( $filename );
 
 			$index_filename = $path . DIRECTORY_SEPARATOR . '.media-library-fix';
-			$this->used_index_files[$index_filename] = '*';
+			$this->status_unreferenced_files['index_files'][$index_filename] = '*';
 
 			file_put_contents( $index_filename,
 				basename( $filename ) . "\n",
@@ -77,14 +84,63 @@ class ProcessUnreferencedFiles {
 
 
 
-	public function process_used_index_file( $log, $wp_upload_dir ) {
-		if ( empty( $this->c_files_unreferenced ) ) {
-			return null;
+	public function process_next_file() {
+		if ( empty( $this->c_files_weak_references ) &&
+				empty( $this->c_files_unreferenced ) ) {
+			return;
+		}
+
+		$c = $this->status_unreferenced_files['current_index_file'];
+		if ( $c['next_to_process'] >= $c['total_to_process'] ) {
+			$this->unreferenced_basenames = null;
+			if ( !$this->take_next_index_file() ) {
+				return null;   // work done
+			}
+
+			// make sure status linked to current state of unref files saved
+			return 'index file';
+		}
+
+
+		if ( is_null( $this->unreferenced_basenames ) ) {
+			$this->unreferenced_basenames = Util::status_unreferenced_basenames();
+		}
+
+		$position = $c['next_to_process'];
+
+		if ( isset( $this->unreferenced_basenames[$position] ) ) {
+			$basename = $this->unreferenced_basenames[$position];
+			if ( !$this->process_file_weak_reference( $c['path'], $basename ) ) {
+				$this->process_unreferenced_file( $c['path'], $basename );
+			}
+		} else {
+			$basename = '';
+			$this->errors_count++;
+			$this->log->log( null, 'Position ' . $position . ' in ' . $c['filename'] .
+				' not found' );
+		}
+
+		$this->status_unreferenced_files['current_index_file']['next_to_process']++;
+		$this->status_unreferenced_files['processed']++;
+
+		return str_replace( ABSPATH, '',
+			$c['path'] . DIRECTORY_SEPARATOR . $basename );
+	}
+
+
+
+	private function take_next_index_file() {
+		// remove processed index file
+		$c = $this->status_unreferenced_files['current_index_file'];
+		if ( !empty( $c['filename'] ) && file_exists( $c['filename'] ) ) {
+			unlink( $c['filename'] );
 		}
 
 		// pop first key without array_keys
 		$index_filename = null;
-		foreach ( $this->used_index_files as $filename => $key ) {
+		$index_files = $this->status_unreferenced_files['index_files'];
+
+		foreach ( $index_files as $filename => $key ) {
 			if ( file_exists( $filename ) ) {
 				$index_filename = $filename;
 			}
@@ -95,7 +151,7 @@ class ProcessUnreferencedFiles {
 			return null;
 		}
 
-		unset( $this->used_index_files[$index_filename] );
+		unset( $this->status_unreferenced_files['index_files'][$index_filename] );
 		$path = dirname( $index_filename );
 
 		$h = fopen( $index_filename, 'r' );
@@ -118,64 +174,172 @@ class ProcessUnreferencedFiles {
 
 		$existing_basenames = scandir( $path );
 
+		$unreferenced_files = array();
+
 		foreach ( $existing_basenames as $existing_basename ) {
 			if ( $existing_basename == '.media-library-fix' ) {
 			} elseif ( !is_dir( $path . DIRECTORY_SEPARATOR . $existing_basename ) ) {
 				if ( !isset( $used_basenames[$existing_basename] ) ) {
-					$this->process_unreferenced_file( $log, $wp_upload_dir,
-						$path, $existing_basename );
+					$unreferenced_files[] = $existing_basename;
 				}
 			}
 		}
 
-    	unlink( $index_filename );
-    	return $index_filename;
+		Util::status_unreferenced_basenames_set( $unreferenced_files );
+		$this->status_unreferenced_files['current_index_file'] = array(
+			'filename' => $index_filename,
+			'path' => $path,
+			'total_to_process' => count( $unreferenced_files ),
+			'next_to_process' => 0
+		);
+
+    	return true;
 	}
 
 
 
-	public function process_unreferenced_file( $log, $wp_upload_dir,
-			$path, $basename ) {
+	private function process_file_weak_reference( $path, $basename ) {
+		if ( empty( $this->c_files_weak_references ) ) {
+			return false;
+		}
+
+		$filename = $path . DIRECTORY_SEPARATOR . $basename;
+		$cut_filename = $filename;
+
+		if ( Util::starts_with( $filename, $this->wp_upload_dir['basedir'] ) ) {
+			$cut_filename = substr( $filename, strlen( $this->wp_upload_dir['basedir'] ) );
+		} elseif ( Util::starts_with( $filename, ABSPATH ) ) {
+			$cut_filename = substr( $filename, strlen( ABSPATH ) );
+		}
+
+		$uri = ltrim(
+			str_replace( DIRECTORY_SEPARATOR, '/', $cut_filename ), '/' );
+
+		global $wpdb;
+
+
+		$like = $wpdb->esc_like( $uri );
+		$sql = "SELECT id
+			FROM {$wpdb->posts}
+			WHERE post_content LIKE '%$like%'
+			LIMIT 1";
+		$present_post_id = $wpdb->get_var( $sql );
+
+		if ( !is_null( $present_post_id ) ) {
+			return $this->process_file_weak_reference_found( $filename,
+				"Image file '$filename' is not in media library but used by post '$present_post_id'" );
+		}
+
+		$like = $wpdb->esc_like( $uri );
+		$sql = "SELECT post_id, meta_key
+			FROM {$wpdb->postmeta}
+			WHERE meta_value LIKE '%$like%'
+			LIMIT 1";
+		$present_meta = $wpdb->get_row( $sql );
+
+		if ( !is_null( $present_meta ) ) {
+			return $this->process_file_weak_reference_found( $filename,
+				"Image file '$filename' is not in media library but used by post '$present_meta->post_id' meta_key '$present_meta->meta_key'" );
+		}
+
+    	$message = apply_filters( 'wow_mlf_unreferenced_file_weak_reference',
+    		'', $path . DIRECTORY_SEPARATOR . $basename, $this->log );
+    	if ( !empty( $message ) ) {
+			return $this->process_file_weak_reference_found( $filename, $message );
+    	}
+
+		return false;
+	}
+
+
+
+	private function process_file_weak_reference_found( $filename, $message ) {
+		if ( $this->c_files_weak_references == 'log' ) {
+			$this->log->log( null, $message );
+		} elseif ( $this->c_files_weak_references == 'add' ) {
+			$this->log->log( null, $message . '. Adding to Media Library.' );
+
+			$wp_filetype = wp_check_filetype_and_ext( $filename, $filename );
+			$url = str_replace( DIRECTORY_SEPARATOR, '/',
+				str_replace(
+					$this->wp_upload_dir['basedir'],
+					$this->wp_upload_dir['baseurl'],
+					$filename ) );
+
+			$filename_parts = pathinfo( $filename );
+
+			$attachment = array(
+				'post_mime_type' => $wp_filetype['type'],
+				'guid' => $url,
+				'post_title' => $filename_parts['filename'],
+				'post_content' => '',
+				'post_excerpt' => '' );
+
+			$post_id = wp_insert_attachment( $attachment, $filename, 0, true );
+			if ( is_wp_error( $post_id ) ) {
+				$this->log->log( $post_id,
+					'Failed to add attachment to Media Library' );
+			} else {
+				wp_update_attachment_metadata( $post_id,
+					wp_generate_attachment_metadata( $post_id, $filename ) );
+				if ( $this->log->verbose ) {
+					$this->log->log( $post_id, 'Added attachment to Media Library' );
+				}
+			}
+		} else {
+			$this->log->log( null, 'Unknown files_weak_references value' );
+		}
+
+		return true;
+	}
+
+
+
+	private function process_unreferenced_file( $path, $basename ) {
+		if ( empty( $this->c_files_unreferenced ) ) {
+			return;
+		}
+
 		$filename = $path . DIRECTORY_SEPARATOR . $basename;
 		$filename_for_log = str_replace( ABSPATH, '', $filename );
 		$this->errors_count++;
 
 		if ( $this->c_files_unreferenced == 'log' ) {
-			$log->log( null, 'Found unreferenced media library file ' .
+			$this->log->log( null, 'Found unreferenced media library file ' .
 				$filename_for_log );
 		} elseif ( $this->c_files_unreferenced == 'move' ) {
-			if ( $log->verbose ) {
-				$log->log(null,
+			if ( $this->log->verbose ) {
+				$this->log->log(null,
 					'Move unreferenced media library file ' . $filename_for_log );
 			}
 
 			$path_postfix = substr( $path,
-				strlen( $wp_upload_dir['basedir'] ) + 1 );
-			$new_path = $wp_upload_dir['basedir'] . DIRECTORY_SEPARATOR .
+				strlen( $this->wp_upload_dir['basedir'] ) + 1 );
+			$new_path = $this->wp_upload_dir['basedir'] . DIRECTORY_SEPARATOR .
 				'unreferenced' . DIRECTORY_SEPARATOR . $path_postfix;
 
 			if ( !file_exists( $new_path ) ) {
 				if ( !@mkdir( $new_path, 0777, true ) ) {
-					$log->log( null,
+					$this->log->log( null,
 						'Failed to create folder  ' . $new_path );
 				}
 			}
 
 			if ( !@rename( $filename,
 				$new_path . DIRECTORY_SEPARATOR . $basename ) ) {
-				$log->log(null,
+				$this->log->log(null,
 					'Failed to move unreferenced media library file ' .
 					$filename_for_log );
 			}
 		} elseif ( $this->c_files_unreferenced == 'delete' ) {
-			if ( $log->verbose ) {
-				$log->log(null,
+			if ( $this->log->verbose ) {
+				$this->log->log(null,
 					'Delete unreferenced media library file ' .
 					$filename_for_log );
 			}
 
 			if (!@unlink( $filename ) ) {
-				$log->log(null,
+				$this->log->log(null,
 					'Failed to delete unreferenced media library file ' .
 					$filename_for_log );
 			}

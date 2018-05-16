@@ -4,7 +4,8 @@ namespace WowMediaLibraryFix;
 
 class Activation {
 	static public function deactivate() {
-	    delete_option( 'wow_media_status' );
+	    Util::status_delete();
+	    Util::status_unreferenced_basenames_delete();
 
 	    $wp_upload_dir = wp_upload_dir();
 	    $log_to_file_filename = $wp_upload_dir['basedir'] .

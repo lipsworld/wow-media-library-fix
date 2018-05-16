@@ -44,6 +44,8 @@ class AdminPage {
 		$process_total = 'starting...';
 		$process_processed = '0';
 		$process_errors = '0';
+		$style_ufiles_processed = $hide;
+		$process_ufiles_processed = '0';
 
 		if ( isset( $status['status'] ) &&
 				( $status['status'] == 'working_posts' ||
@@ -56,9 +58,15 @@ class AdminPage {
 			$style_continue_outer = '';
 			$style_process = '';
 			$style_working_now = $hide;
-			$process_total = $status['posts_all'];
-			$process_processed = $status['posts_processed'];
+			$process_total = $status['posts']['all'];
+			$process_processed = $status['posts']['processed'];
 			$process_errors = $status['errors_count'];
+			$style_ufiles_processed_outer = $hide;
+			if ( $status['unreferenced_files']['processed'] > 0 ) {
+				$style_ufiles_processed = '';
+				$process_ufiles_processed =
+					$status['unreferenced_files']['processed'];
+			}
 		}
 
 		include( __DIR__ . DIRECTORY_SEPARATOR . 'AdminPage_View.php' );
@@ -85,6 +93,8 @@ class AdminPage {
 			if ( $action == 'start' ) {
 				$status = array(
 					'version' => '1.0',
+
+					// config
 					'guid' => $_REQUEST['guid'],
 					'posts_delete_with_missing_images' =>
 						( $_REQUEST['posts_delete_with_missing_images'] == 'true' ),
@@ -99,14 +109,29 @@ class AdminPage {
 					'log_to' => $_REQUEST['log_to'],
 					'log_verbose' =>
 						( $_REQUEST['log_verbose'] == 'true' ),
-					'posts_all' => Process::posts_count(),
-					'posts_processed' => 0,
-					'unreferenced_files_processed' => 0,
+
+					// common status
 					'errors_count' => 0,
-					'last_processed_id' => 0,
 					'last_processed_description' => '',
-					'used_index_files' => array(),
-					'status' => 'working_posts'
+					'status' => 'working_posts',
+
+					// posts status
+					'posts' => array(
+						'all' => ProcessPost::posts_count(),
+						'processed' => 0,
+						'last_processed_id' => 0
+					),
+
+					// unreferenced files status
+					'unreferenced_files' => array(
+						'processed' => 0,
+						'current_index_file' => array(
+							'filename' => '',
+							'total_to_process' => 0,
+							'next_to_process' => 0
+						),
+						'index_files' => array(),
+					)
 				);
 			}
 		}
@@ -128,7 +153,7 @@ class AdminPage {
 			$process_unreferenced_files );
 
 		// on start
-		if ( $status['posts_processed'] == 0 ) {
+		if ( $status['posts']['processed'] == 0 ) {
 			$log->clear();
 			$process_unreferenced_files->clear();
 		}
@@ -143,16 +168,17 @@ class AdminPage {
 		try {
 			if ( $status['status'] == 'working_posts' ) {
 				for (;;) {
-					$post_id = $process_post->get_post_after( $status['last_processed_id'] );
-					$status['posts_processed']++;
+					$post_id = $process_post->get_post_after(
+						$status['posts']['last_processed_id'] );
+					$status['posts']['processed']++;
 					if ( is_null( $post_id ) ) {
 						$status['status'] = 'working_index_files';
-						$status['posts_processed'] = $status['posts_all'];
+						$status['posts']['processed'] = $status['posts']['all'];
 						break;
 					}
 
 					$process_post->process_post( $post_id );
-					$status['last_processed_id'] = $post_id;
+					$status['posts']['last_processed_id'] = $post_id;
 
 					if ( time() >= $time_end ) {
 						break;
@@ -165,8 +191,7 @@ class AdminPage {
 				for (;;) {
 					$filename = $process_unreferenced_files->process_next_file();
 					$last_processed_description = $filename;
-					$status['unreferenced_files_processed']++;
-					if ( is_null( $index_file ) ) {
+					if ( is_null( $filename ) ) {
 						$status['status'] = 'done';
 						break;
 					}
@@ -179,15 +204,18 @@ class AdminPage {
 
 			$status['errors_count'] += $process_post->errors_count;
 			$status['errors_count'] += $process_unreferenced_files->errors_count;
-			$status['used_index_files'] = $process_unreferenced_files->used_index_files;
+			$status['unreferenced_files'] =
+				$process_unreferenced_files->status_unreferenced_files;
 			Util::status_set($status);
 		} catch ( \Exception $e ) {
 			die( $e->getMessage() );
 		}
 
 		echo json_encode(array(
-			'posts_all' => $status['posts_all'],
-			'posts_processed' => $status['posts_processed'],
+			'posts_all' => $status['posts']['all'],
+			'posts_processed' => $status['posts']['processed'],
+			'unreferenced_files_processed' =>
+				$status['unreferenced_files']['processed'],
 			'errors_count' => $status['errors_count'],
 			'last_processed_description' => $last_processed_description,
 			'status' => $status['status'],

@@ -87,6 +87,12 @@ jQuery(function($) {
 
 				$('#wow_mlf_total').html(data.posts_all);
 				$('#wow_mlf_processed').html(data.posts_processed);
+
+				$('#wow_mlf_unreferenced_files_processed_outer').css('display',
+					data.unreferenced_files_processed > 0 ? '' : 'none');
+				$('#wow_mlf_unreferenced_files_processed').html(
+					data.unreferenced_files_processed);
+
 				$('#wow_mlf_errors').html(data.errors_count);
 				$('#wow_mlf_now').html(data.last_processed_description);
 

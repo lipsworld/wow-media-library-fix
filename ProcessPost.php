@@ -106,8 +106,8 @@ class ProcessPost {
 				$filename, $meta );
 		}
 
-		$this->last_processed_description = str_replace(
-			ABSPATH, '', $filename );
+		$this->last_processed_description = str_replace( ABSPATH, '',
+			$filename );
 		return;
 	}
 

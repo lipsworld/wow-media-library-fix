@@ -32,7 +32,43 @@ class Util {
 
 
 
+	static public function status_delete() {
+		delete_option( 'wow_media_library_fix_status' );
+	}
+
+
+
 	static public function status_set( $v ) {
 		update_option( 'wow_media_library_fix_status', json_encode( $v ), false );
+	}
+
+
+
+	static public function status_unreferenced_basenames() {
+		$v = get_option( 'wow_media_library_fix_status_unreferenced_basenames' );
+
+		if ( !empty( $v ) ) {
+			try {
+				return json_decode( $v, true );
+			} catch ( \Exception $error ) {
+			}
+		}
+
+		return array(
+			'version' => '1.0'
+		);
+	}
+
+
+
+	static public function status_unreferenced_basenames_delete() {
+		delete_option( 'wow_media_library_fix_status_unreferenced_basenames' );
+	}
+
+
+
+	static public function status_unreferenced_basenames_set( $v ) {
+		update_option( 'wow_media_library_fix_status_unreferenced_basenames',
+			json_encode( $v ), false );
 	}
 }

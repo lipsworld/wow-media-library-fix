@@ -205,6 +205,14 @@ namespace WowMediaLibraryFix;
 					<?php echo htmlspecialchars( $process_processed ) ?>
 				</td>
 			</tr>
+			<tr id="wow_mlf_unreferenced_files_processed_outer"
+				<?php echo $style_ufiles_processed ?>>
+				<th>Unreferenced files processed:</th>
+				<td id="wow_mlf_unreferenced_files_processed">
+					<?php echo htmlspecialchars( $process_ufiles_processed ) ?>
+				</td>
+			</tr>
+
 			<tr>
 				<th>Errors found:</th>
 				<td id="wow_mlf_errors">
