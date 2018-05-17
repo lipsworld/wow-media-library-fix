@@ -91,8 +91,8 @@ class ProcessPostUnreferencedThumbnails {
 			}
 		}
 
-    	$this->basenames = apply_filters( 'wow_mlf_referenced_thumbnails',
-    		$this->basenames, $this->path );
+		$this->basenames = apply_filters( 'wow_mlf_referenced_thumbnails',
+			$this->basenames, $this->path );
 
 		foreach ( $this->basenames as $filename => $value ) {
 			$this->errors_count++;

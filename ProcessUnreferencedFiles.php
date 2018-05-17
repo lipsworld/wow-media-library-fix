@@ -107,9 +107,17 @@ class ProcessUnreferencedFiles {
 		}
 
 		$position = $c['next_to_process'];
+		$filename_for_log = '';
 
 		if ( isset( $this->unreferenced_basenames[$position] ) ) {
 			$basename = $this->unreferenced_basenames[$position];
+
+			$filename_for_log = str_replace( ABSPATH, '',
+				$c['path'] . DIRECTORY_SEPARATOR . $basename );
+			if ( $this->log->verbose ) {
+				$this->log->log( null, "Processing file $filename_for_log" );
+			}
+
 			if ( !$this->process_file_weak_reference( $c['path'], $basename ) ) {
 				$this->process_unreferenced_file( $c['path'], $basename );
 			}
@@ -123,8 +131,7 @@ class ProcessUnreferencedFiles {
 		$this->status_unreferenced_files['current_index_file']['next_to_process']++;
 		$this->status_unreferenced_files['processed']++;
 
-		return str_replace( ABSPATH, '',
-			$c['path'] . DIRECTORY_SEPARATOR . $basename );
+		return $filename_for_log;
 	}
 
 
@@ -159,18 +166,18 @@ class ProcessUnreferencedFiles {
 			throw new \Exception( 'Faied to open ' . $index_filename );
 		}
 
-    	$used_basenames = array();
-    	while ( ($line = fgets( $h ) ) !== false ) {
-    		$line = trim( $line );
-    		if ( !empty( $line ) ) {
-        		$used_basenames[ $line ] = '*';
-        	}
-    	}
+		$used_basenames = array();
+		while ( ($line = fgets( $h ) ) !== false ) {
+			$line = trim( $line );
+			if ( !empty( $line ) ) {
+				$used_basenames[ $line ] = '*';
+			}
+		}
 
-    	fclose( $h );
+		fclose( $h );
 
-    	$used_basenames = apply_filters( 'wow_mlf_referenced_files',
-    		$used_basenames, $path );
+		$used_basenames = apply_filters( 'wow_mlf_referenced_files',
+			$used_basenames, $path );
 
 		$existing_basenames = scandir( $path );
 
@@ -193,7 +200,7 @@ class ProcessUnreferencedFiles {
 			'next_to_process' => 0
 		);
 
-    	return true;
+		return true;
 	}
 
 
@@ -216,39 +223,120 @@ class ProcessUnreferencedFiles {
 			str_replace( DIRECTORY_SEPARATOR, '/', $cut_filename ), '/' );
 
 		global $wpdb;
+		$collation = $this->get_query_collation();
 
+		//
+		// search in post table
+		//
+		$exclude_ids = array();
+		do {
+			$like = $wpdb->esc_like( $uri );
+			$exclude = count( $exclude_ids <= 0 ) ? '' :
+				'AND id NOT IN (' . implode( ',', $exclude_ids ) . ')';
 
-		$like = $wpdb->esc_like( $uri );
-		$sql = "SELECT id
-			FROM {$wpdb->posts}
-			WHERE post_content LIKE '%$like%'
-			LIMIT 1";
-		$present_post_id = $wpdb->get_var( $sql );
+			$sql = "SELECT id
+				FROM {$wpdb->posts}
+				WHERE post_content LIKE '%$like%' $collation
+					$exclude
+				LIMIT 1";
+
+			$sql = apply_filters(
+				'wow_mlf_unreferenced_file_weak_reference_content_query',
+				$sql );
+			$present_post_id = $wpdb->get_var( $sql );
+			if ( !empty( $wpdb->last_error ) ) {
+				throw new \Exception( $wpdb->last_error );
+			}
+
+			// allow custom code to process it themselves
+			$action = apply_filters(
+				'wow_mlf_unreferenced_file_weak_reference_content_found_action',
+				'', $present_post_id, $path . DIRECTORY_SEPARATOR . $basename,
+				$this->log );
+			if ( $action == 'exclude' ) {
+				$exclude_ids[] = $wpdb->prepare( '%d', $present_post_id );
+			}
+		} while ( $action == 'repeat' || $action == 'exclude' );
 
 		if ( !is_null( $present_post_id ) ) {
 			return $this->process_file_weak_reference_found( $filename,
 				"Image file '$filename' is not in media library but used by post '$present_post_id'" );
 		}
 
-		$like = $wpdb->esc_like( $uri );
-		$sql = "SELECT post_id, meta_key
-			FROM {$wpdb->postmeta}
-			WHERE meta_value LIKE '%$like%'
-			LIMIT 1";
-		$present_meta = $wpdb->get_row( $sql );
+
+		//
+		// search in postmeat table
+		//
+		$exclude_ids = array();
+		do {
+			// _wp_attachment_metadata already processed with knowledge about
+			// context. Avoid refundant false positives
+			$like = $wpdb->esc_like( $uri );
+			$exclude = count( $exclude_ids <= 0 ) ? '' :
+				'AND meta_id NOT IN (' . implode( ',', $exclude_ids ) . ')';
+
+			$sql = "SELECT meta_id, post_id, meta_key, meta_value
+				FROM {$wpdb->postmeta}
+				WHERE meta_value LIKE '%$like%' $collation AND
+					meta_key != '_wp_attachment_metadata' $exclude
+				LIMIT 1";
+			$sql = apply_filters(
+				'wow_mlf_unreferenced_file_weak_reference_meta_query',
+				$sql );
+			$present_meta = $wpdb->get_row( $sql );
+			if ( !empty( $wpdb->last_error ) ) {
+				throw new \Exception( $wpdb->last_error );
+			}
+
+			// allow custom code to process it themselves
+			$action = apply_filters(
+				'wow_mlf_unreferenced_file_weak_reference_meta_found_action',
+				'', $present_meta, $path . DIRECTORY_SEPARATOR . $basename,
+				$this->log );
+
+			if ( $action == 'exclude' ) {
+				$exclude_ids[] = $wpdb->prepare( '%d', $present_meta->meta_id );
+			}
+		} while ( $action == 'repeat' || $action == 'exclude' );
 
 		if ( !is_null( $present_meta ) ) {
 			return $this->process_file_weak_reference_found( $filename,
 				"Image file '$filename' is not in media library but used by post '$present_meta->post_id' meta_key '$present_meta->meta_key'" );
 		}
 
-    	$message = apply_filters( 'wow_mlf_unreferenced_file_weak_reference',
-    		'', $path . DIRECTORY_SEPARATOR . $basename, $this->log );
-    	if ( !empty( $message ) ) {
+		$message = apply_filters( 'wow_mlf_unreferenced_file_weak_reference',
+			'', $path . DIRECTORY_SEPARATOR . $basename, $this->log );
+		if ( !empty( $message ) ) {
 			return $this->process_file_weak_reference_found( $filename, $message );
-    	}
+		}
 
 		return false;
+	}
+
+
+
+	private function get_query_collation() {
+		// utf8_general_ci or ut8mb4 is usually a default collation, what means
+		// case-insensitive search. while filenames are case-sensitive
+		global $wpdb;
+		if ( empty( $wpdb->charset ) ) {
+			return '';
+		}
+
+		$charset_esc = $wpdb->prepare( '%s', $wpdb->charset );
+		$bin_collation = $wpdb->get_row(
+			"SHOW COLLATION
+			WHERE Charset = $charset_esc AND
+				collation LIKE '%\_bin'" );
+		if ( !empty( $wpdb->last_error ) ) {
+			return '';
+		}
+
+		if ( is_null( $bin_collation ) ) {
+			return '';
+		}
+
+		return $wpdb->prepare( "COLLATE %s", $bin_collation->Collation );
 	}
 
 
@@ -308,10 +396,8 @@ class ProcessUnreferencedFiles {
 			$this->log->log( null, 'Found unreferenced media library file ' .
 				$filename_for_log );
 		} elseif ( $this->c_files_unreferenced == 'move' ) {
-			if ( $this->log->verbose ) {
-				$this->log->log(null,
-					'Move unreferenced media library file ' . $filename_for_log );
-			}
+			$this->log->log(null,
+				'Move unreferenced media library file ' . $filename_for_log );
 
 			$path_postfix = substr( $path,
 				strlen( $this->wp_upload_dir['basedir'] ) + 1 );
@@ -321,7 +407,7 @@ class ProcessUnreferencedFiles {
 			if ( !file_exists( $new_path ) ) {
 				if ( !@mkdir( $new_path, 0777, true ) ) {
 					$this->log->log( null,
-						'Failed to create folder  ' . $new_path );
+						"Failed to create folder $new_path" );
 				}
 			}
 
@@ -332,16 +418,12 @@ class ProcessUnreferencedFiles {
 					$filename_for_log );
 			}
 		} elseif ( $this->c_files_unreferenced == 'delete' ) {
-			if ( $this->log->verbose ) {
-				$this->log->log(null,
-					'Delete unreferenced media library file ' .
-					$filename_for_log );
-			}
+			$this->log->log(null,
+				"Delete unreferenced media library file $filename_for_log" );
 
 			if (!@unlink( $filename ) ) {
 				$this->log->log(null,
-					'Failed to delete unreferenced media library file ' .
-					$filename_for_log );
+					"Failed to delete unreferenced media library file $filename_for_log" );
 			}
 		}
 	}
