@@ -21,12 +21,12 @@ namespace WowMediaLibraryFix;
 			AdminUi::tr_checkbox( 'Metadata', array(
 				'id' => 'wow_mlf_config_regenerate_metadata',
 				'name' => 'Regenerate attachments metadata and thumbnails',
-				'value' => true,
+				'value' => self::v( 'regenerate_metadata', true ),
 				'description' => 'Rebuilds _wp_attachment_metadata meta field based on actual image size and regenerate all thumbnails'
 			) );
 			AdminUi::tr_radiogroup( 'Unreferenced Thumbnails', array(
 				'name' => 'wow_mlf_config_files_thumbnails',
-				'value' => 'move',
+				'value' => self::v( 'files_thumbnails', 'move' ),
 				'values' => array(
 					array(
 						'value' => '',
@@ -50,12 +50,12 @@ namespace WowMediaLibraryFix;
 			AdminUi::tr_checkbox( 'Broken Attachments', array(
 				'id' => 'wow_mlf_config_posts_delete_with_missing_images',
 				'name' => 'Delete attachments pointing to missing image file',
-				'value' => false,
+				'value' => self::v( 'posts_delete_with_missing_images', false ),
 				'description' => 'Delete attachments from Media Library is image file it references to is missing and plugin failed to find it from post GUID values. Otherwise just log entry created.'
 			) );
 			AdminUi::tr_radiogroup( 'Duplicate Attachments', array(
 				'name' => 'wow_mlf_config_posts_delete_duplicate_url',
-				'value' => '',
+				'value' => self::v( 'posts_delete_duplicate_url', '' ),
 				'values' => array(
 					array(
 						'value' => '',
@@ -78,7 +78,7 @@ namespace WowMediaLibraryFix;
 			) );
 			AdminUi::tr_radiogroup( 'Post GUID', array(
 				'name' => 'wow_mlf_config_guid',
-				'value' => '',
+				'value' => self::v( 'guid', '' ),
 				'values' => array(
 					array(
 						'value' => '',
@@ -97,7 +97,7 @@ namespace WowMediaLibraryFix;
 			) );
 			AdminUi::tr_radiogroup( 'Images with weak references', array(
 				'name' => 'wow_mlf_config_files_weak_references',
-				'value' => '',
+				'value' => self::v( 'files_weak_references', '' ),
 				'values' => array(
 					array(
 						'value' => '',
@@ -116,7 +116,7 @@ namespace WowMediaLibraryFix;
 			) );
 			AdminUi::tr_radiogroup( 'Unreferenced Images', array(
 				'name' => 'wow_mlf_config_files_unreferenced',
-				'value' => '',
+				'value' => self::v( 'files_unreferenced', '' ),
 				'values' => array(
 					array(
 						'value' => '',
@@ -139,7 +139,7 @@ namespace WowMediaLibraryFix;
 			) );
 			AdminUi::tr_radiogroup( 'Logging to', array(
 				'name' => 'wow_mlf_config_log_to',
-				'value' => 'screen',
+				'value' => self::v( 'log_to', 'screen' ),
 				'values' => array(
 					array(
 						'value' => 'screen',
@@ -154,7 +154,7 @@ namespace WowMediaLibraryFix;
 			AdminUi::tr_checkbox( 'Verbose logging', array(
 				'id' => 'wow_mlf_config_log_verbose',
 				'name' => 'Verbose logging',
-				'value' => false
+				'value' => self::v( 'log_verbose', false )
 			) );
 			?>
 		</table>

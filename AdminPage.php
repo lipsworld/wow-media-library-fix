@@ -74,6 +74,18 @@ class AdminPage {
 
 
 
+	static private function v( $key, $defaul_value ) {
+		$status = Util::status();
+
+		if ( isset( $status[$key] ) ) {
+			return $status[$key];
+		}
+
+		return $defaul_value;
+	}
+
+
+
 	static public function wp_ajax_wow_media_library_fix_process() {
 		if ( !wp_verify_nonce( $_REQUEST['_wpnonce'], 'wow_media_library_fix' ) ) {
 			wp_nonce_ays( 'wow_media_library_fix' );
