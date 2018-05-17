@@ -230,15 +230,15 @@ class ProcessUnreferencedFiles {
 		//
 		$exclude_ids = array();
 		do {
-			$like = $wpdb->esc_like( $uri );
+			$like = '%' . $wpdb->esc_like( $uri ) . '%';
 			$exclude = count( $exclude_ids <= 0 ) ? '' :
 				'AND id NOT IN (' . implode( ',', $exclude_ids ) . ')';
 
-			$sql = "SELECT id
+			$sql = $wpdb->prepare( "SELECT id
 				FROM {$wpdb->posts}
-				WHERE post_content LIKE '%$like%' $collation
+				WHERE post_content LIKE %s $collation
 					$exclude
-				LIMIT 1";
+				LIMIT 1", $like );
 
 			$sql = apply_filters(
 				'wow_mlf_unreferenced_file_weak_reference_content_query',
@@ -271,15 +271,17 @@ class ProcessUnreferencedFiles {
 		do {
 			// _wp_attachment_metadata already processed with knowledge about
 			// context. Avoid refundant false positives
-			$like = $wpdb->esc_like( $uri );
+			$like = '%' . $wpdb->esc_like( $uri ) . '%';
 			$exclude = count( $exclude_ids <= 0 ) ? '' :
 				'AND meta_id NOT IN (' . implode( ',', $exclude_ids ) . ')';
 
-			$sql = "SELECT meta_id, post_id, meta_key, meta_value
+			$sql = $wpdb->prepare(
+				"SELECT meta_id, post_id, meta_key, meta_value
 				FROM {$wpdb->postmeta}
-				WHERE meta_value LIKE '%$like%' $collation AND
+				WHERE meta_value LIKE %s $collation AND
 					meta_key != '_wp_attachment_metadata' $exclude
-				LIMIT 1";
+				LIMIT 1",
+				$like );
 			$sql = apply_filters(
 				'wow_mlf_unreferenced_file_weak_reference_meta_query',
 				$sql );
@@ -323,11 +325,10 @@ class ProcessUnreferencedFiles {
 			return '';
 		}
 
-		$charset_esc = $wpdb->prepare( '%s', $wpdb->charset );
-		$bin_collation = $wpdb->get_row(
+		$bin_collation = $wpdb->get_row( $wpdb->prepare(
 			"SHOW COLLATION
-			WHERE Charset = $charset_esc AND
-				collation LIKE '%\_bin'" );
+			WHERE Charset = %s AND
+				collation LIKE '%\_bin'", $wpdb->charset ) );
 		if ( !empty( $wpdb->last_error ) ) {
 			return '';
 		}
