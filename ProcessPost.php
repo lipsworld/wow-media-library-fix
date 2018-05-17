@@ -67,6 +67,10 @@ class ProcessPost {
 	public function process_post( $post_id ) {
 		$this->last_processed_description = '';
 
+		if ( $this->log->verbose ) {
+			$this->log->log( $post_id, 'Processing post' );
+		}
+
 		// don't process non-images
 		$post = get_post( $post_id );
 		if ( substr( $post->post_mime_type, 0, 6 ) != 'image/' ) {
@@ -150,7 +154,7 @@ class ProcessPost {
 
 		if ( !file_exists( $guid_filename ) ) {
 			$log_postfix = ( $guid_filename == $filename ? '' :
-			 	" and '$guid_filename'" );
+				" and '$guid_filename'" );
 
 			$this->errors_count++;
 			$this->log->log( $post->ID,
@@ -232,6 +236,9 @@ class ProcessPost {
 				LIMIT 1", $new_guid, $post->ID );
 
 			$present = $wpdb->get_var( $sql );
+			if ( !empty( $wpdb->last_error ) ) {
+				throw new \Exception( $wpdb->last_error );
+			}
 			if ( is_null( $present ) ) {
 				break;
 			}
@@ -255,6 +262,9 @@ class ProcessPost {
 		$wpdb->update( $wpdb->posts,
 			array( 'guid' => $new_guid ),
 			array( 'id' => $post->ID ) );
+		if ( !empty( $wpdb->last_error ) ) {
+			throw new \Exception( $wpdb->last_error );
+		}
 
 		$this->errors_count++;
 		$this->log->log( $post->ID,

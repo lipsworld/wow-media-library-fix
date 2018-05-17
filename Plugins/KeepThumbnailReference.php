@@ -15,6 +15,9 @@ class KeepThumbnailReference {
 			WHERE meta_key = '_thumbnail_id' AND
 				meta_value = %d", $old_post_id );
 		$post_ids = $wpdb->get_results( $sql );
+		if ( !empty( $wpdb->last_error ) ) {
+			throw new \Exception( $wpdb->last_error );
+		}
 
 		foreach ( $post_ids as $row ) {
 			$affected_post_id = $row->post_id;

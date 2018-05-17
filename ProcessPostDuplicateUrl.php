@@ -40,6 +40,9 @@ class ProcessPostDuplicateUrl {
 				post_id > %d
 			LIMIT 1", $my_file, $this->post->ID );
 		$present = $wpdb->get_var( $sql );
+		if ( !empty( $wpdb->last_error ) ) {
+			throw new \Exception( $wpdb->last_error );
+		}
 
 		if ( is_null( $present ) ) {
 			return false;
@@ -69,9 +72,12 @@ class ProcessPostDuplicateUrl {
 			ORDER BY post_id DESC
 			LIMIT 1", $my_file, $this->post->ID, $this->post->post_status );
 		$present = $wpdb->get_var( $sql );
+		if ( !empty( $wpdb->last_error ) ) {
+			throw new \Exception( $wpdb->last_error );
+		}
 
 		$present = apply_filters( 'wow_mlf_duplicate_post',
-    		$present, $this->post, '_wp_attached_file' );
+			$present, $this->post, '_wp_attached_file' );
 
 		if ( is_null( $present ) ) {
 			if ( $this->log->verbose ) {
