@@ -4,7 +4,7 @@ Donate link: https://wowpress.host/plugins/fix-media-library/
 Tags: media library, attachments, thumbnail, thumbnails, post thumbnail, post thumbnails, clean, images
 Requires PHP: 5.3
 Requires at least: 4.6
-Tested up to: 4.9.5
+Tested up to: 4.9.6
 Stable tag: 1.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -26,12 +26,13 @@ Useful when:
 * New thumbnail sizes are registered
 * Some thumbnail sizes are not used anymore (theme change, upgrade), but image files are still exists
 * There are Media Library entries present pointing to image files that don't exist anymore
-* Some entries in Media Library don't show images, while those are present (_wp_attachment_metadata meta field corrupted)
+* Some entries in Media Library are not displayed, while image files are present (_wp_attachment_metadata meta field corrupted)
 * There are a lot of images in wp-content/uploads folder that are no longer used
 * There are duplicate attachments pointing to the same image file
+* Images are used by website, but you can't find them in Media Library
 * You want to update attachments GUID fields containing old/staging urls
 
-At [WowPress.host](https://wowpress.host/) company we regularly migrate very old databases and clean it up to make sure website using it are running smoothly. Of course those have all different kinds of inconsistencies collected during years or even decades, and Media Library is the most common problematic piece of data here.
+At [WowPress.host](https://wowpress.host/) company we regularly migrate very old databases and clean it up to make sure website using it are running smoothly. Those databases have all different kinds of inconsistencies collected during years or even decades of usage, and Media Library is the most common problematic piece of data here.
 That plugin helps to solve most common problems related to Media Library data.
 
 We use a lot of open-source tools in our work, and therefore decided publish our own tools so that those can be used by the community too.

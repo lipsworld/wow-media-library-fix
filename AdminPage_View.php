@@ -51,7 +51,7 @@ namespace WowMediaLibraryFix;
 				'id' => 'wow_mlf_config_posts_delete_with_missing_images',
 				'name' => 'Delete attachments pointing to missing image file',
 				'value' => self::v( 'posts_delete_with_missing_images', false ),
-				'description' => 'Delete attachments from Media Library is image file it references to is missing and plugin failed to find it from post GUID values. Otherwise just log entry created.'
+				'description' => 'Delete attachments from Media Library is image file it references to is missing and plugin failed to find it from post GUID field.'
 			) );
 			AdminUi::tr_radiogroup( 'Duplicate Attachments', array(
 				'name' => 'wow_mlf_config_posts_delete_duplicate_url',
@@ -74,7 +74,7 @@ namespace WowMediaLibraryFix;
 						'name' => 'Delete duplicate attachments even if attached to different parent posts.'
 					)
 				),
-				'description' => 'Attachments pointing the same image file with the same post_parent are often caused by some malfunction during original image upload process. Normally that never happens. post_parent field is used by application logic sometimes (rarely), so there is an option to leave duplicates with different post_parent field.'
+				'description' => 'Attachments pointing the same image file with the same are often caused by a malfunction during original image upload process. Normally that never happens. post_parent field is used by application logic sometimes (rarely), so records with different post_parent field is not assumed as duplicate by default.'
 			) );
 			AdminUi::tr_radiogroup( 'Post GUID', array(
 				'name' => 'wow_mlf_config_guid',
@@ -93,7 +93,7 @@ namespace WowMediaLibraryFix;
 						'name' => 'Update if there is a mismatch'
 					)
 				),
-				'description' => "It's not suggested to change post's GUID field since it's supposed to be a constant since creation. But normally those is built based on image URL for attachments, and it may be helpful to normalize it sometimes."
+				'description' => "It's not suggested to change post's GUID field. It's supposed to be a constant since creation. Normally that field is built based on image URL for attachments, and it may be helpful to normalize it sometimes."
 			) );
 			AdminUi::tr_radiogroup( 'Images with weak references', array(
 				'name' => 'wow_mlf_config_files_weak_references',
@@ -112,7 +112,7 @@ namespace WowMediaLibraryFix;
 						'name' => 'Add to Media Library'
 					)
 				),
-				'description' => 'Finds out all images in your wp-content/uploads/&lt;year&gt; folders that are not in Media Library, but practically used. That operation is very database time expensive.'
+				'description' => 'Finds out all images in your wp-content/uploads/&lt;year&gt; folders that are not in Media Library, but practically used. That operation is very database time expensive. That function does the most it can but application still may use image even without direct references in a database.'
 			) );
 			AdminUi::tr_radiogroup( 'Unreferenced Images', array(
 				'name' => 'wow_mlf_config_files_unreferenced',

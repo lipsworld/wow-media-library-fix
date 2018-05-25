@@ -231,7 +231,7 @@ class ProcessUnreferencedFiles {
 		$exclude_ids = array();
 		do {
 			$like = '%' . $wpdb->esc_like( $uri ) . '%';
-			$exclude = count( $exclude_ids <= 0 ) ? '' :
+			$exclude = count( $exclude_ids ) <= 0 ? '' :
 				'AND id NOT IN (' . implode( ',', $exclude_ids ) . ')';
 
 			$sql = $wpdb->prepare( "SELECT id
@@ -272,7 +272,7 @@ class ProcessUnreferencedFiles {
 			// _wp_attachment_metadata already processed with knowledge about
 			// context. Avoid refundant false positives
 			$like = '%' . $wpdb->esc_like( $uri ) . '%';
-			$exclude = count( $exclude_ids <= 0 ) ? '' :
+			$exclude = count( $exclude_ids ) <= 0 ? '' :
 				'AND meta_id NOT IN (' . implode( ',', $exclude_ids ) . ')';
 
 			$sql = $wpdb->prepare(
